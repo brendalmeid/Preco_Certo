@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preço Certo — calcule o preço ideal do seu produto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="faixa-institucional">
+  <img src="assets/logo-uemg.png" alt="Universidade do Estado de Minas Gerais — UEMG" class="faixa-institucional__logo">
+  <span class="faixa-institucional__texto">Projeto Integrador Individual · Engenharia de Computação · Unidade Divinópolis</span>
+</div>
+
+<!-- tela de login -->
+<main id="view-login" class="view-login">
+  <div class="login-card">
+    <div class="login-card__mark">PC</div>
+    <h1>Preço Certo</h1>
+    <p class="login-card__sub">Entre com o nome do seu negócio para organizar seus produtos.</p>
+
+    <div class="campo">
+      <label for="login-nome">Nome do seu negócio</label>
+      <input type="text" id="login-nome" placeholder="Ex: Doces da Ana" maxlength="60" autocomplete="username">
+    </div>
+    <div class="campo">
+      <label for="login-senha">Código de acesso <span class="opcional">(opcional)</span></label>
+      <input type="password" id="login-senha" placeholder="Só para separar seus dados neste navegador" autocomplete="current-password">
+    </div>
+    <p class="erro" id="erro-login" role="alert"></p>
+
+    <button type="button" id="btn-entrar" class="btn btn--primario btn--bloco">Entrar</button>
+
+    <p class="login-aviso">
+      Este é um login local simulado: tudo fica salvo apenas neste navegador, sem servidor nem internet. Não use senhas que você usa em outros lugares.
+    </p>
+  </div>
+</main>
+
+<!-- app (logado) -->
+<div id="view-app" hidden>
+
+  <header class="app-header">
+    <div class="app-header__mark">PC</div>
+    <div class="app-header__text">
+      <h1>Preço Certo</h1>
+      <p id="app-header-sub">Monte o custo do seu produto e descubra por quanto vender.</p>
+    </div>
+    <div class="app-header__acoes">
+      <span class="usuario-logado" id="usuario-logado-nome"></span>
+      <button type="button" id="btn-sair" class="btn btn--ghost">Sair</button>
+    </div>
+  </header>
+
+  <main class="main-app">
+
+    <!-- dashboard: lista de produtos -->
+    <section id="view-dashboard" class="container-largo">
+      <div class="dashboard-cabecalho">
+        <div>
+          <h2>Seus produtos</h2>
+          <p class="card__sub">Gerencie o custo, o preço e o estoque de cada produto.</p>
+        </div>
+        <button type="button" id="btn-novo-produto-dash" class="btn btn--primario">+ Novo produto</button>
+      </div>
+
+      <div id="alertas-gerais" class="alertas-gerais" hidden></div>
+
+      <div id="grade-produtos" class="grade-produtos"></div>
+      <p id="dashboard-vazio" class="dashboard-vazio" hidden>
+        Você ainda não tem nenhum produto cadastrado. Clique em "Novo produto" para começar a precificar.
+      </p>
+    </section>
+
+    <!-- edicao de um produto -->
+    <section id="view-produto" class="container-largo" hidden>
+      <button type="button" id="btn-voltar-dashboard" class="btn btn--ghost btn-voltar">← Meus produtos</button>
+
+      <div class="layout">
+        <section class="col-principal">
+
+          <!-- 1. identificacao -->
+          <section class="card" aria-labelledby="titulo-produto">
+            <h2 id="titulo-produto">1. Qual produto você está precificando?</h2>
+            <div class="campo">
+              <label for="produto-nome">Nome do produto</label>
+              <input type="text" id="produto-nome" placeholder="Ex: Bolo de Chocolate 1 kg" maxlength="80">
+              <p class="erro" id="erro-produto-nome" role="alert"></p>
+            </div>
+            <div class="campo">
+              <label for="produto-descricao">Descrição <span class="opcional">(opcional)</span></label>
+              <textarea id="produto-descricao" rows="2" placeholder="Ex: bolo de chocolate com cobertura, vendido inteiro, embalado em caixa"></textarea>
+            </div>
+          </section>
+
+          <!-- 2. custos -->
+          <section class="card" aria-labelledby="titulo-custos">
+            <div class="card__cabecalho">
+              <h2 id="titulo-custos">2. Do que esse produto é feito?</h2>
+              <p class="card__sub">Adicione cada insumo ou custo direto envolvido na fabricação.</p>
+            </div>
+
+            <div class="tabela-wrap">
+              <table class="tabela-custos" id="tabela-custos">
+                <caption class="sr-only">Lista de insumos e custos do produto</caption>
+                <colgroup>
+                  <col>
+                  <col>
+                  <col>
+                  <col>
+                  <col>
+                  <col>
+                  <col>
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">Item</th>
+                    <th scope="col">Categoria</th>
+                    <th scope="col">Unidade</th>
+                    <th scope="col">Qtd.</th>
+                    <th scope="col">Valor unit. (R$)</th>
+                    <th scope="col">Subtotal</th>
+                    <th scope="col"><span class="sr-only">Remover</span></th>
+                  </tr>
+                </thead>
+                <tbody id="corpo-tabela-custos"></tbody>
+                <tfoot>
+                  <tr class="linha-total">
+                    <td colspan="5">Custo total do produto</td>
+                    <td id="custo-total-tabela">R$ 0,00</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <button type="button" id="btn-add-item" class="btn btn--secundario">+ Adicionar item de custo</button>
+            <p class="erro" id="erro-custos" role="alert"></p>
+          </section>
+
+          <!-- 3. preco -->
+          <section class="card" aria-labelledby="titulo-preco">
+            <h2 id="titulo-preco">3. Como você quer definir o preço?</h2>
+
+            <div class="modo-preco" role="radiogroup" aria-label="Modo de definição do preço">
+              <label class="modo-opcao">
+                <input type="radio" name="modo-preco" value="margem" id="modo-margem" checked>
+                <span>Quero informar a margem de lucro desejada</span>
+              </label>
+              <label class="modo-opcao">
+                <input type="radio" name="modo-preco" value="preco" id="modo-preco-venda">
+                <span>Quero informar o preço de venda pretendido</span>
+              </label>
+            </div>
+
+            <div class="campo" id="bloco-margem">
+              <label for="margem-desejada">Margem de lucro desejada sobre o custo (%)</label>
+              <input type="number" id="margem-desejada" min="0" step="0.1" placeholder="Ex: 40" inputmode="decimal">
+              <p class="erro" id="erro-margem" role="alert"></p>
+            </div>
+
+            <div class="campo" id="bloco-preco" hidden>
+              <label for="preco-venda-input">Preço de venda pretendido (R$)</label>
+              <input type="number" id="preco-venda-input" min="0" step="0.01" placeholder="Ex: 45,00" inputmode="decimal">
+              <p class="erro" id="erro-preco" role="alert"></p>
+            </div>
+          </section>
+
+          <!-- 4. estoque -->
+          <section class="card" aria-labelledby="titulo-estoque">
+            <div class="card__cabecalho">
+              <h2 id="titulo-estoque">4. Controle de estoque <span class="opcional">(opcional)</span></h2>
+              <p class="card__sub">Acompanhe quantas unidades você tem prontas para vender.</p>
+            </div>
+            <div class="campo-linha">
+              <div class="campo">
+                <label for="estoque-atual">Quantidade em estoque</label>
+                <input type="number" id="estoque-atual" min="0" step="1" placeholder="Ex: 12" inputmode="numeric">
+              </div>
+              <div class="campo">
+                <label for="estoque-minimo">Avisar quando o estoque chegar a</label>
+                <input type="number" id="estoque-minimo" min="0" step="1" placeholder="Ex: 3" inputmode="numeric">
+              </div>
+            </div>
+            <p class="erro" id="erro-estoque" role="alert"></p>
+          </section>
+
+          <div class="acoes-produto">
+            <button type="button" id="btn-excluir-produto" class="btn btn--perigo">Excluir este produto</button>
+            <div class="salvar-produto">
+              <button type="button" id="btn-salvar-produto" class="btn btn--primario">Salvar produto</button>
+              <p id="status-salvamento" class="status-salvamento" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- resumo / simulador -->
+        <aside class="col-resumo">
+          <div class="resumo" id="painel-resumo" aria-labelledby="titulo-resumo">
+            <div class="resumo__topo">
+              <span class="resumo__etiqueta">Simulador</span>
+              <h2 id="titulo-resumo" class="resumo__produto">Seu produto</h2>
+            </div>
+
+            <dl class="resumo__linhas">
+              <div class="resumo__linha">
+                <dt>Custo total</dt>
+                <dd id="res-custo-total">R$ 0,00</dd>
+              </div>
+              <div class="resumo__linha">
+                <dt id="res-label-preco">Preço de venda sugerido</dt>
+                <dd id="res-preco-venda">R$ 0,00</dd>
+              </div>
+              <div class="resumo__separador" aria-hidden="true"></div>
+              <div class="resumo__linha resumo__linha--destaque">
+                <dt>Lucro por unidade</dt>
+                <dd id="res-lucro">R$ 0,00</dd>
+              </div>
+              <div class="resumo__linha resumo__linha--destaque">
+                <dt>Margem real obtida</dt>
+                <dd id="res-margem-real">0,0%</dd>
+              </div>
+            </dl>
+
+            <p class="resumo__nota" id="resumo-nota">Adicione ao menos um item de custo para começar a simulação.</p>
+
+            <div id="resumo-alertas" class="resumo-alertas" hidden></div>
+          </div>
+        </aside>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>Preço Certo · protótipo funcional — Projeto Integrador · UEMG Divinópolis</p>
+  </footer>
+</div>
+
+<p class="aviso-toast" id="toast" role="status" aria-live="polite"></p>
+
+<template id="template-linha-custo">
+  <tr class="linha-custo">
+    <td data-label="Item">
+      <input type="text" class="input-nome-item" placeholder="Ex: Farinha de trigo" maxlength="60">
+    </td>
+    <td data-label="Categoria">
+      <select class="input-categoria">
+        <option value="Matéria-prima">Matéria-prima</option>
+        <option value="Embalagem">Embalagem</option>
+        <option value="Outros Custos Diretos">Outros Custos Diretos</option>
+      </select>
+    </td>
+    <td data-label="Unidade">
+      <select class="input-unidade">
+        <option value="" disabled selected>Selecione...</option>
+        <option value="kg">kg (quilo)</option>
+        <option value="g">g (grama)</option>
+        <option value="L">L (litro)</option>
+        <option value="ml">ml (mililitro)</option>
+        <option value="un">un (unidade)</option>
+        <option value="dz">dz (dúzia)</option>
+        <option value="pacote">pacote</option>
+        <option value="cx">caixa</option>
+        <option value="m">m (metro)</option>
+        <option value="cm">cm (centímetro)</option>
+        <option value="fatia">fatia</option>
+        <option value="porcao">porção</option>
+        <option value="outro">Outro...</option>
+      </select>
+      <input type="text" class="input-unidade-outro" placeholder="Digite a unidade" maxlength="10" hidden>
+    </td>
+    <td data-label="Qtd.">
+      <span class="quantidade-unidade" aria-hidden="true"></span>
+      <input type="number" class="input-qtd" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 2" aria-label="Quantidade">
+    </td>
+    <td data-label="Valor unit.">
+      <input type="number" class="input-valor" min="0" step="0.01" inputmode="decimal">
+    </td>
+    <td data-label="Subtotal" class="celula-subtotal">R$ 0,00</td>
+    <td class="celula-remover">
+      <button type="button" class="btn-remover" aria-label="Remover este item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2.5 4h11M6.5 4V2.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1V4m1.5 0-.5 8.5a1 1 0 0 1-1 .95H6.5a1 1 0 0 1-1-.95L5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </td>
+  </tr>
+</template>
+
+<template id="template-card-produto">
+  <article class="card-produto">
+    <div class="card-produto__topo">
+      <h3 class="card-produto__nome">Produto sem nome</h3>
+      <span class="chip chip--estoque">Estoque: —</span>
+    </div>
+    <dl class="card-produto__linhas">
+      <div><dt>Custo</dt><dd class="cp-custo">R$ 0,00</dd></div>
+      <div><dt>Preço</dt><dd class="cp-preco">R$ 0,00</dd></div>
+      <div><dt>Margem</dt><dd class="cp-margem">0,0%</dd></div>
+    </dl>
+    <div class="card-produto__alertas"></div>
+    <button type="button" class="btn btn--secundario btn--bloco btn-abrir-produto">Abrir</button>
+  </article>
+</template>
+
+<script src="script.js"></script>
+</body>
+</html>
