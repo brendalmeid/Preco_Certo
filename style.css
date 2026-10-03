@@ -465,20 +465,23 @@ textarea { resize: vertical; }
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  min-width: 760px;
+  --largura-nome-item: 110px;
+  min-width: calc(850px + var(--largura-nome-item));
   font-size: 13.5px;
 }
 
 /* espaco para preencher os campos sem ajuste manual */
-.tabela-custos col:nth-child(1) { width: 24%; }
-.tabela-custos col:nth-child(2) { width: 17%; }
-.tabela-custos col:nth-child(3) { width: 15%; }
-.tabela-custos col:nth-child(4) { width: 11%; }
-.tabela-custos col:nth-child(5) { width: 16%; }
-.tabela-custos col:nth-child(6) { width: 12%; }
-.tabela-custos col:nth-child(7) { width: 5%; }
+.tabela-custos col:nth-child(1) { width: var(--largura-nome-item); }
+.tabela-custos col:nth-child(2) { width: 160px; }
+.tabela-custos col:nth-child(3) { width: 130px; }
+.tabela-custos col:nth-child(4) { width: 120px; }
+.tabela-custos col:nth-child(5) { width: 140px; }
+.tabela-custos col:nth-child(6) { width: 140px; }
+.tabela-custos col:nth-child(7) { width: 110px; }
+.tabela-custos col:nth-child(8) { width: 50px; }
 
 .tabela-custos .input-qtd,
+.tabela-custos .input-qtd-embalagem,
 .tabela-custos .input-valor {
   border-color: var(--borda-forte);
   background: var(--paper);

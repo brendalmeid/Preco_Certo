@@ -34,6 +34,7 @@
     <p class="erro" id="erro-login" role="alert"></p>
 
     <button type="button" id="btn-entrar" class="btn btn--primario btn--bloco">Entrar</button>
+    <button type="button" id="btn-esqueci-codigo" class="btn btn--ghost btn--bloco">Esqueci meu código</button>
 
     <p class="login-aviso">
       Este é um login local simulado: tudo fica salvo apenas neste navegador, sem servidor nem internet. Não use senhas que você usa em outros lugares.
@@ -101,7 +102,7 @@
           <section class="card" aria-labelledby="titulo-custos">
             <div class="card__cabecalho">
               <h2 id="titulo-custos">2. Do que esse produto é feito?</h2>
-              <p class="card__sub">Adicione cada insumo ou custo direto envolvido na fabricação.</p>
+              <p class="card__sub">Informe a quantidade usada e os dados da embalagem fechada, usando a mesma unidade nas duas quantidades. Ex.: embalagem de 1 kg por R$ 10,00 e uso de 2,5 kg = R$ 25,00.</p>
             </div>
 
             <div class="tabela-wrap">
@@ -115,14 +116,16 @@
                   <col>
                   <col>
                   <col>
+                  <col>
                 </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">Item</th>
                     <th scope="col">Categoria</th>
                     <th scope="col">Unidade</th>
-                    <th scope="col">Qtd.</th>
-                    <th scope="col">Valor unit. (R$)</th>
+                    <th scope="col">Quantidade usada</th>
+                    <th scope="col">Quantidade na embalagem</th>
+                    <th scope="col">Preço da embalagem (R$)</th>
                     <th scope="col">Subtotal</th>
                     <th scope="col"><span class="sr-only">Remover</span></th>
                   </tr>
@@ -130,7 +133,7 @@
                 <tbody id="corpo-tabela-custos"></tbody>
                 <tfoot>
                   <tr class="linha-total">
-                    <td colspan="5">Custo total do produto</td>
+                    <td colspan="6">Custo total do produto</td>
                     <td id="custo-total-tabela">R$ 0,00</td>
                     <td></td>
                   </tr>
@@ -276,12 +279,16 @@
       </select>
       <input type="text" class="input-unidade-outro" placeholder="Digite a unidade" maxlength="10" hidden>
     </td>
-    <td data-label="Qtd.">
+    <td data-label="Quantidade usada">
       <span class="quantidade-unidade" aria-hidden="true"></span>
-      <input type="number" class="input-qtd" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 2" aria-label="Quantidade">
+      <input type="number" class="input-qtd" min="0" step="any" inputmode="decimal" placeholder="Ex: 2" aria-label="Quantidade usada">
     </td>
-    <td data-label="Valor unit.">
-      <input type="number" class="input-valor" min="0" step="0.01" inputmode="decimal">
+    <td data-label="Quantidade na embalagem">
+      <span class="embalagem-unidade quantidade-unidade" aria-hidden="true"></span>
+      <input type="number" class="input-qtd-embalagem" min="0" step="any" inputmode="decimal" placeholder="Ex: 1" aria-label="Quantidade na embalagem fechada">
+    </td>
+    <td data-label="Preço da embalagem (R$)">
+      <input type="number" class="input-valor" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 10,00" aria-label="Preço pago na embalagem fechada (R$)">
     </td>
     <td data-label="Subtotal" class="celula-subtotal">R$ 0,00</td>
     <td class="celula-remover">

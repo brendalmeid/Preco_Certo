@@ -23,6 +23,7 @@
   const loginNome = buscarElemento('#login-nome');
   const loginSenha = buscarElemento('#login-senha');
   const btnEntrar = buscarElemento('#btn-entrar');
+  const btnEsqueciCodigo = buscarElemento('#btn-esqueci-codigo');
   const erroLogin = buscarElemento('#erro-login');
   const btnSair = buscarElemento('#btn-sair');
   const usuarioLogadoNome = buscarElemento('#usuario-logado-nome');
@@ -91,13 +92,26 @@
   function salvarRegistro(imediato = false) {
     if (!chaveUsuarioAtual || !registro) return false;
     clearTimeout(salvarTimer);
+    salvarTimer = null;
+    if (produtoAtualId && !validarFormularioProduto()) {
+      statusSalvamento.textContent = 'Revise os campos obrigatórios antes de salvar';
+      statusSalvamento.classList.add('status-salvamento--erro');
+      return false;
+    }
     statusSalvamento.textContent = 'Salvando…';
     statusSalvamento.classList.remove('status-salvamento--erro');
 
     function gravar() {
       salvarTimer = null;
+      if (produtoAtualId && !validarFormularioProduto()) return false;
       try {
-        localStorage.setItem(PREFIXO_USUARIO + chaveUsuarioAtual, JSON.stringify(registro));
+        const anteriores = carregarRegistro(chaveUsuarioAtual)?.produtos || [];
+        const produtos = registro.produtos.flatMap((produto) => {
+          if (produtoCompleto(produto)) return [produto];
+          const anterior = anteriores.find((p) => p.id === produto.id);
+          return anterior ? [anterior] : [];
+        });
+        localStorage.setItem(PREFIXO_USUARIO + chaveUsuarioAtual, JSON.stringify({ ...registro, produtos }));
         statusSalvamento.textContent = 'Alterações salvas';
         return true;
       } catch (e) {
@@ -116,8 +130,10 @@
   function subtotalValido(item) {
     const qtd = parseFloat(item.qtd);
     const valor = parseFloat(item.valor);
-    if (isNaN(qtd) || isNaN(valor) || qtd < 0 || valor < 0) return null;
-    return qtd * valor;
+    const qtdEmbalagem = parseFloat(item.qtdEmbalagem ?? 1);
+    if (![qtd, valor, qtdEmbalagem].every(Number.isFinite) || qtd < 0 || valor < 0 || qtdEmbalagem <= 0) return null;
+    const subtotal = (qtd / qtdEmbalagem) * valor;
+    return Number.isFinite(subtotal) ? subtotal : null;
   }
 
   function custoTotalDe(produto) {
@@ -193,6 +209,45 @@
     abrirApp(chave, dados);
   }
 
+  function redefinirCodigo() {
+    const nome = loginNome.value.trim();
+    erroLogin.textContent = '';
+    if (!nome) {
+      erroLogin.textContent = 'Informe o nome do seu negócio para redefinir o código.';
+      loginNome.focus();
+      return;
+    }
+
+    const chave = normalizarChave(nome);
+    const dados = carregarRegistro(chave);
+    if (!dados) {
+      erroLogin.textContent = 'Nenhum cadastro encontrado com esse nome neste navegador.';
+      loginNome.focus();
+      return;
+    }
+
+    if (!window.confirm(`Redefinir o código de "${dados.nomeExibicao}" neste navegador? Seus produtos serão mantidos. Como este é um cadastro local, qualquer pessoa com acesso a este navegador pode redefinir o código.`)) return;
+    const novoCodigo = window.prompt('Digite o novo código de acesso. Deixe vazio para entrar sem código.');
+    if (novoCodigo === null) return;
+    const confirmacao = window.prompt('Digite novamente o novo código para confirmar.');
+    if (confirmacao === null) return;
+    if (novoCodigo !== confirmacao) {
+      erroLogin.textContent = 'Os códigos não coincidem. Clique em "Esqueci meu código" para tentar novamente.';
+      btnEsqueciCodigo.focus();
+      return;
+    }
+
+    try {
+      localStorage.setItem(PREFIXO_USUARIO + chave, JSON.stringify({ ...dados, senha: novoCodigo }));
+    } catch (e) {
+      erroLogin.textContent = 'Não foi possível redefinir o código. Tente novamente.';
+      return;
+    }
+    loginSenha.value = '';
+    loginSenha.focus();
+    mostrarToast('Código redefinido. Informe o novo código e clique em Entrar.');
+  }
+
   function sair() {
     if (salvarTimer !== null && !salvarRegistro(true)) {
       mostrarToast('Não foi possível salvar. Tente salvar antes de sair.');
@@ -212,6 +267,10 @@
   function abrirApp(chave, dados) {
     chaveUsuarioAtual = chave;
     registro = dados;
+    // Uma embalagem de referência com quantidade 1 preserva o custo antigo por unidade.
+    registro.produtos.forEach((produto) => produto.itens.forEach((item) => {
+      if (item.qtdEmbalagem === undefined) item.qtdEmbalagem = 1;
+    }));
     usuarioLogadoNome.textContent = dados.nomeExibicao;
     viewLogin.hidden = true;
     viewApp.hidden = false;
@@ -219,6 +278,7 @@
   }
 
   btnEntrar.addEventListener('click', tentarEntrar);
+  btnEsqueciCodigo.addEventListener('click', redefinirCodigo);
   loginSenha.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   loginNome.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   btnSair.addEventListener('click', sair);
@@ -292,7 +352,7 @@
       id: novoId('produto'),
       nome: '',
       descricao: '',
-      itens: [{ id: novoId('item'), nome: '', categoria: 'Matéria-prima', qtd: '', unidade: '', valor: '' }],
+      itens: [{ id: novoId('item'), nome: '', categoria: 'Matéria-prima', qtd: '', unidade: '', qtdEmbalagem: '', valor: '' }],
       modoPreco: 'margem',
       margem: '',
       precoVenda: '',
@@ -304,7 +364,6 @@
   btnNovoProdutoDash.addEventListener('click', () => {
     const produto = criarProdutoVazio();
     registro.produtos.push(produto);
-    salvarRegistro();
     abrirProduto(produto.id);
   });
 
@@ -338,7 +397,7 @@
     blocoPreco.hidden = produto.modoPreco !== 'preco';
 
     if (produto.itens.length === 0) {
-      produto.itens.push({ id: novoId('item'), nome: '', categoria: 'Matéria-prima', qtd: '', unidade: '', valor: '' });
+      produto.itens.push({ id: novoId('item'), nome: '', categoria: 'Matéria-prima', qtd: '', unidade: '', qtdEmbalagem: '', valor: '' });
     }
 
     nomeFoiTocado = false;
@@ -353,7 +412,7 @@
     if (produto.itens.length === 0) {
       const tr = document.createElement('tr');
       tr.className = 'linha-vazia';
-      tr.innerHTML = `<td colspan="7">Nenhum item de custo adicionado ainda. Clique em "Adicionar item de custo" para começar.</td>`;
+      tr.innerHTML = `<td colspan="8">Nenhum item de custo adicionado ainda. Clique em "Adicionar item de custo" para começar.</td>`;
       corpoTabela.appendChild(tr);
       return;
     }
@@ -369,12 +428,14 @@
       const campoUnidade = tr.querySelector('.input-unidade');
       const campoOutraUnidade = tr.querySelector('.input-unidade-outro');
       const campoValor = tr.querySelector('.input-valor');
+      const campoEmbalagem = tr.querySelector('.input-qtd-embalagem');
       const btnRemover = tr.querySelector('.btn-remover');
 
       campoNome.value = item.nome || '';
       campoCategoria.value = item.categoria || 'Matéria-prima';
       campoQuantidade.value = item.qtd ?? '';
       campoValor.value = item.valor ?? '';
+      campoEmbalagem.value = item.qtdEmbalagem ?? 1;
 
       const unidadesPadrao = ['kg', 'g', 'L', 'ml', 'un', 'dz', 'pacote', 'cx', 'm', 'cm', 'fatia', 'porcao'];
       if (item.unidade && !unidadesPadrao.includes(item.unidade)) {
@@ -390,13 +451,17 @@
 
       function atualizarUnidadeDaQuantidade() {
         const unidade = item.unidade === 'porcao' ? 'porção' : (item.unidade || '').trim();
-        const descricao = unidade ? `Quantidade (${unidade})` : 'Quantidade';
+        const descricao = unidade ? `Quantidade usada (${unidade})` : 'Quantidade usada';
         const exemplo = ['kg', 'L', 'm'].includes(unidade) ? 'Ex: 0,5' : 'Ex: 2';
 
         tr.querySelector('.quantidade-unidade').textContent = unidade ? descricao : '';
         campoQuantidade.closest('td').dataset.label = descricao;
         campoQuantidade.setAttribute('aria-label', descricao);
         campoQuantidade.placeholder = exemplo;
+        const descricaoEmbalagem = unidade ? `Quantidade na embalagem (${unidade})` : 'Quantidade na embalagem';
+        tr.querySelector('.embalagem-unidade').textContent = unidade ? descricaoEmbalagem : '';
+        campoEmbalagem.closest('td').dataset.label = descricaoEmbalagem;
+        campoEmbalagem.setAttribute('aria-label', descricaoEmbalagem);
       }
 
       atualizarUnidadeDaQuantidade();
@@ -424,6 +489,7 @@
         if (campoQuantidade.value !== '' && Number(campoQuantidade.value) < 0) campoQuantidade.value = 0;
         atualizar('qtd', campoQuantidade.value);
       });
+      campoEmbalagem.addEventListener('input', () => atualizar('qtdEmbalagem', campoEmbalagem.value));
       campoValor.addEventListener('input', () => {
         if (campoValor.value !== '' && Number(campoValor.value) < 0) campoValor.value = 0;
         atualizar('valor', campoValor.value);
@@ -432,6 +498,7 @@
       btnRemover.addEventListener('click', () => {
         const produtoAgora = produtoAtual();
         const nomeItem = item.nome && item.nome.trim() ? item.nome.trim() : 'este item';
+        if (!window.confirm(`Remover "${nomeItem}"? Essa ação não pode ser desfeita.`)) return;
         produtoAgora.itens = produtoAgora.itens.filter((i) => i.id !== item.id);
         renderLinhasCusto(produtoAgora);
         recalcularTudo();
@@ -451,7 +518,7 @@
       const celula = corpoTabela.querySelector(`.celula-subtotal[data-id="${item.id}"]`);
       if (!celula) return;
       if (sub === null) {
-        const tocado = item.nome || item.qtd !== '' || item.valor !== '';
+        const tocado = item.nome || item.qtd !== '' || item.valor !== '' || item.qtdEmbalagem !== '';
         celula.textContent = tocado ? '— incompleto' : 'R$ 0,00';
         if (tocado) algumIncompleto = true;
       } else {
@@ -459,7 +526,7 @@
       }
     });
     erroCustos.textContent = algumIncompleto
-      ? 'Preencha quantidade e valor unitário (números maiores ou iguais a zero) em todos os itens para que entrem no cálculo.'
+      ? 'Preencha quantidade usada, quantidade na embalagem e preço da embalagem. A quantidade na embalagem deve ser maior que zero; os demais valores podem ser zero.'
       : '';
   }
 
@@ -513,15 +580,84 @@
     });
   }
 
+  const contextoMedidaNome = document.createElement('canvas').getContext('2d');
+
+  function ajustarLarguraNomeItem() {
+    const campos = buscarElementos('.input-nome-item', corpoTabela);
+    if (!contextoMedidaNome || campos.length === 0) return;
+    contextoMedidaNome.font = window.getComputedStyle(campos[0]).font;
+    const larguraTexto = Math.max(...campos.map((campo) => contextoMedidaNome.measureText(campo.value).width));
+    const largura = Math.min(420, Math.max(110, Math.ceil(larguraTexto + 40)));
+    corpoTabela.closest('table').style.setProperty('--largura-nome-item', `${largura}px`);
+  }
+
   function recalcularTudo() {
     const produto = produtoAtual();
     if (!produto) return;
+    ajustarLarguraNomeItem();
     atualizarSubtotaisNaTela(produto);
     renderResumo(produto);
     salvarRegistro();
   }
 
   // validacao
+  function produtoCompleto(produto) {
+    const texto = (valor) => typeof valor === 'string' && valor.trim() !== '';
+    const numero = (valor) => valor !== '' && valor != null &&
+      String(valor).trim() !== '' && Number.isFinite(Number(valor)) && Number(valor) >= 0;
+    return texto(produto.nome) && produto.itens.every((item) =>
+      texto(item.nome) && texto(item.unidade) && numero(item.qtd) && numero(item.valor)) &&
+      numero(produto.modoPreco === 'margem' ? produto.margem : produto.precoVenda) &&
+      [produto.estoqueAtual, produto.estoqueMinimo].every((valor) => valor === '' || numero(valor));
+  }
+
+  const numeroNaoNegativo = (campo) => campo.value.trim() !== '' &&
+    Number.isFinite(Number(campo.value)) && Number(campo.value) >= 0 && !campo.validity.badInput;
+
+  function validarFormularioProduto(mostrarErros = false) {
+    const produto = produtoAtual();
+    if (!produto) return false;
+    let primeiroInvalido = null;
+    function verificar(campo, valido) {
+      if (!valido && !primeiroInvalido) primeiroInvalido = campo;
+      if (mostrarErros) campo.setAttribute('aria-invalid', String(!valido));
+      return valido;
+    }
+
+    verificar(elNome, elNome.value.trim() !== '');
+    let custosValidos = true;
+    buscarElementos('.linha-custo', corpoTabela).forEach((linha) => {
+      const unidade = buscarElemento('.input-unidade', linha);
+      const campos = [
+        buscarElemento('.input-nome-item', linha),
+        unidade.value === 'outro' ? buscarElemento('.input-unidade-outro', linha) : unidade,
+        buscarElemento('.input-qtd', linha),
+        buscarElemento('.input-valor', linha),
+        buscarElemento('.input-qtd-embalagem', linha),
+      ];
+      campos.forEach((campo, indice) => {
+        const valido = indice < 2 ? campo.value.trim() !== '' : numeroNaoNegativo(campo) && (indice !== 4 || Number(campo.value) > 0);
+        if (!verificar(campo, valido)) custosValidos = false;
+      });
+    });
+    const campoPreco = produto.modoPreco === 'margem' ? inputMargem : inputPrecoVenda;
+    verificar(campoPreco, numeroNaoNegativo(campoPreco));
+    [inputEstoqueAtual, inputEstoqueMinimo].forEach((campo) => {
+      verificar(campo, campo.value === '' && !campo.validity.badInput || numeroNaoNegativo(campo));
+    });
+
+    if (mostrarErros) {
+      nomeFoiTocado = true;
+      validarNomeProduto();
+      erroCustos.textContent = custosValidos ? '' : 'Preencha nome, unidade, quantidade usada, quantidade na embalagem e preço da embalagem. A quantidade na embalagem deve ser maior que zero; os demais números podem ser zero.';
+      validarMargem();
+      validarPreco();
+      validarEstoque();
+      if (primeiroInvalido) primeiroInvalido.focus();
+    }
+    return primeiroInvalido === null;
+  }
+
   let nomeFoiTocado = false;
   function validarNomeProduto() {
     const vazio = elNome.value.trim() === '';
@@ -534,16 +670,16 @@
   function validarMargem() {
     const produto = produtoAtual();
     if (!produto || produto.modoPreco !== 'margem') { erroMargem.textContent = ''; return true; }
-    const invalido = inputMargem.value !== '' && Number(inputMargem.value) < 0;
-    erroMargem.textContent = invalido ? 'A margem não pode ser negativa.' : '';
+    const invalido = !numeroNaoNegativo(inputMargem);
+    erroMargem.textContent = invalido ? 'Informe uma margem maior ou igual a zero.' : '';
     return !invalido;
   }
 
   function validarPreco() {
     const produto = produtoAtual();
     if (!produto || produto.modoPreco !== 'preco') { erroPreco.textContent = ''; return true; }
-    const invalido = inputPrecoVenda.value !== '' && Number(inputPrecoVenda.value) < 0;
-    erroPreco.textContent = invalido ? 'O preço de venda não pode ser negativo.' : '';
+    const invalido = !numeroNaoNegativo(inputPrecoVenda);
+    erroPreco.textContent = invalido ? 'Informe um preço de venda maior ou igual a zero.' : '';
     return !invalido;
   }
 
@@ -576,6 +712,14 @@
   // eventos do formulario
   btnSalvarProduto.addEventListener('click', () => {
     if (!produtoAtual()) return;
+    if (!validarFormularioProduto(true)) {
+      clearTimeout(salvarTimer);
+      salvarTimer = null;
+      statusSalvamento.textContent = 'Revise os campos obrigatórios antes de salvar';
+      statusSalvamento.classList.add('status-salvamento--erro');
+      mostrarToast('Revise os campos obrigatórios antes de salvar');
+      return;
+    }
     if (salvarRegistro(true)) {
       statusSalvamento.textContent = 'Produto salvo';
       mostrarToast('Produto salvo');
@@ -598,7 +742,7 @@
 
   btnAddItem.addEventListener('click', () => {
     const produto = produtoAtual();
-    produto.itens.push({ id: novoId('item'), nome: '', categoria: 'Matéria-prima', qtd: '', unidade: '', valor: '' });
+    produto.itens.push({ id: novoId('item'), nome: '', categoria: 'Matéria-prima', qtd: '', unidade: '', qtdEmbalagem: '', valor: '' });
     renderLinhasCusto(produto);
     recalcularTudo();
     const campo = corpoTabela.querySelector('.linha-custo:last-child .input-nome-item');
