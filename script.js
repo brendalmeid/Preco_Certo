@@ -21,6 +21,7 @@
   const loginNome = buscarElemento('#login-nome');
   const loginEmail = buscarElemento('#login-email');
   const loginSenha = buscarElemento('#login-senha');
+  const btnMostrarSenha = buscarElemento('#btn-mostrar-senha');
   const btnEntrar = buscarElemento('#btn-entrar');
   const btnCriarConta = buscarElemento('#btn-criar-conta');
   const statusCadastro = buscarElemento('#status-cadastro');
@@ -58,6 +59,7 @@
   const templateLinhaCusto = buscarElemento('#template-linha-custo');
   const btnExcluirProduto = buscarElemento('#btn-excluir-produto');
   const btnSalvarProduto = buscarElemento('#btn-salvar-produto');
+  const dialogProdutoSalvo = buscarElemento('#dialog-produto-salvo');
   const statusSalvamento = buscarElemento('#status-salvamento');
 
   const resProduto = buscarElemento('#titulo-resumo');
@@ -76,6 +78,11 @@
   let filaSalvamento = Promise.resolve(true);
   let produtosSalvos = [];
   let sessaoVercel = null;
+
+  function mostrarSenha(mostrar) {
+    loginSenha.type = mostrar ? 'text' : 'password';
+    btnMostrarSenha.textContent = mostrar ? 'Ocultar senha' : 'Mostrar senha';
+  }
 
   async function apiNegocio(dados, renovar = true) {
     const headers = { 'Content-Type': 'application/json' };
@@ -222,6 +229,7 @@
     try {
       sessaoVercel = await apiNegocio({ acao: 'entrar', email: loginEmail.value.trim(), senha });
       loginSenha.value = '';
+      mostrarSenha(false);
       abrirApp(await apiNegocio({ acao: 'abrir', nome }));
     } catch (e) {
       sessaoVercel = null;
@@ -233,15 +241,17 @@
   }
 
   async function criarConta() {
+    if (btnCriarConta.disabled) return;
     erroLogin.textContent = '';
     statusCadastro.hidden = true;
+    const senha = loginSenha.value;
     if (!loginEmail.value || !loginEmail.validity.valid) {
       erroLogin.textContent = 'Informe um e-mail válido.';
       loginEmail.focus();
       return;
     }
-    if (loginSenha.value.length < 8) {
-      erroLogin.textContent = 'Para criar uma conta, use uma senha com pelo menos 8 caracteres.';
+    if (senha.length < 8) {
+      erroLogin.textContent = `O campo Senha tem ${senha.length} de 8 caracteres necessários.`;
       loginSenha.focus();
       return;
     }
@@ -250,11 +260,12 @@
     btnCriarConta.disabled = true;
     try {
       const resultado = await apiNegocio({
-        acao: 'criar-conta', email: loginEmail.value.trim(), senha: loginSenha.value,
+        acao: 'criar-conta', email: loginEmail.value.trim(), senha,
       });
       statusCadastro.textContent = resultado.mensagem;
       statusCadastro.hidden = false;
       loginSenha.value = '';
+      mostrarSenha(false);
     } catch (e) {
       erroLogin.textContent = e.message;
     } finally {
@@ -295,6 +306,10 @@
 
   btnEntrar.addEventListener('click', tentarEntrar);
   btnCriarConta.addEventListener('click', criarConta);
+  btnMostrarSenha.addEventListener('click', () => {
+    mostrarSenha(loginSenha.type === 'password');
+  });
+  loginSenha.addEventListener('input', () => { erroLogin.textContent = ''; });
   loginSenha.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   loginEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   loginNome.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
@@ -413,8 +428,7 @@
     inputEstoqueMinimo.value = produto.estoqueMinimo;
 
     document.querySelector(`input[name="modo-preco"][value="${produto.modoPreco}"]`).checked = true;
-    blocoMargem.hidden = produto.modoPreco !== 'margem';
-    blocoPreco.hidden = produto.modoPreco !== 'preco';
+    exibirModoPreco(produto.modoPreco);
 
     if (produto.itens.length === 0) {
       produto.itens.push({ id: novoId('item'), nome: '', categoria: 'Matéria-prima', qtd: '', unidade: '', qtdEmbalagem: '', valor: '' });
@@ -424,6 +438,14 @@
     renderLinhasCusto(produto);
     validarNomeProduto();
     recalcularTudo();
+  }
+
+  function exibirModoPreco(modo) {
+    const usaMargem = modo === 'margem';
+    blocoMargem.hidden = !usaMargem;
+    blocoPreco.hidden = usaMargem;
+    inputMargem.required = usaMargem;
+    inputPrecoVenda.required = !usaMargem;
   }
 
   function renderLinhasCusto(produto) {
@@ -466,6 +488,7 @@
         campoUnidade.value = item.unidade || '';
         campoOutraUnidade.hidden = true;
       }
+      campoOutraUnidade.required = !campoOutraUnidade.hidden;
 
       const atualizar = (campo, valor) => { item[campo] = valor; recalcularTudo(); };
 
@@ -490,6 +513,7 @@
       campoCategoria.addEventListener('change', () => atualizar('categoria', campoCategoria.value));
 
       campoUnidade.addEventListener('change', () => {
+        campoOutraUnidade.required = campoUnidade.value === 'outro';
         if (campoUnidade.value === 'outro') {
           campoOutraUnidade.hidden = false;
           campoOutraUnidade.focus();
@@ -600,21 +624,9 @@
     });
   }
 
-  const contextoMedidaNome = document.createElement('canvas').getContext('2d');
-
-  function ajustarLarguraNomeItem() {
-    const campos = buscarElementos('.input-nome-item', corpoTabela);
-    if (!contextoMedidaNome || campos.length === 0) return;
-    contextoMedidaNome.font = window.getComputedStyle(campos[0]).font;
-    const larguraTexto = Math.max(...campos.map((campo) => contextoMedidaNome.measureText(campo.value).width));
-    const largura = Math.min(420, Math.max(110, Math.ceil(larguraTexto + 40)));
-    corpoTabela.closest('table').style.setProperty('--largura-nome-item', `${largura}px`);
-  }
-
   function recalcularTudo() {
     const produto = produtoAtual();
     if (!produto) return;
-    ajustarLarguraNomeItem();
     atualizarSubtotaisNaTela(produto);
     renderResumo(produto);
     salvarRegistro();
@@ -626,7 +638,8 @@
     const numero = (valor) => valor !== '' && valor != null &&
       String(valor).trim() !== '' && Number.isFinite(Number(valor)) && Number(valor) >= 0;
     return texto(produto.nome) && produto.itens.every((item) =>
-      texto(item.nome) && texto(item.unidade) && numero(item.qtd) && numero(item.valor)) &&
+      texto(item.nome) && texto(item.unidade) && numero(item.qtd) && numero(item.valor) &&
+      numero(item.qtdEmbalagem) && Number(item.qtdEmbalagem) > 0) &&
       numero(produto.modoPreco === 'margem' ? produto.margem : produto.precoVenda) &&
       [produto.estoqueAtual, produto.estoqueMinimo].every((valor) => valor === '' || numero(valor));
   }
@@ -648,15 +661,17 @@
     let custosValidos = true;
     buscarElementos('.linha-custo', corpoTabela).forEach((linha) => {
       const unidade = buscarElemento('.input-unidade', linha);
+      const embalagem = buscarElemento('.input-qtd-embalagem', linha);
       const campos = [
         buscarElemento('.input-nome-item', linha),
+        buscarElemento('.input-categoria', linha),
         unidade.value === 'outro' ? buscarElemento('.input-unidade-outro', linha) : unidade,
         buscarElemento('.input-qtd', linha),
         buscarElemento('.input-valor', linha),
-        buscarElemento('.input-qtd-embalagem', linha),
+        embalagem,
       ];
       campos.forEach((campo, indice) => {
-        const valido = indice < 2 ? campo.value.trim() !== '' : numeroNaoNegativo(campo) && (indice !== 4 || Number(campo.value) > 0);
+        const valido = indice < 3 ? campo.value.trim() !== '' : numeroNaoNegativo(campo) && (campo !== embalagem || Number(campo.value) > 0);
         if (!verificar(campo, valido)) custosValidos = false;
       });
     });
@@ -669,7 +684,7 @@
     if (mostrarErros) {
       nomeFoiTocado = true;
       validarNomeProduto();
-      erroCustos.textContent = custosValidos ? '' : 'Preencha nome, unidade, quantidade usada, quantidade na embalagem e preço da embalagem. A quantidade na embalagem deve ser maior que zero; os demais números podem ser zero.';
+      erroCustos.textContent = custosValidos ? '' : 'Preencha nome, categoria, unidade, quantidade usada, quantidade na embalagem e preço da embalagem. A quantidade na embalagem deve ser maior que zero.';
       validarMargem();
       validarPreco();
       validarEstoque();
@@ -730,8 +745,18 @@
   }
 
   // eventos do formulario
+  dialogProdutoSalvo.querySelector('form').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    dialogProdutoSalvo.close();
+    if (evento.submitter?.value === 'produtos') {
+      btnVoltarDashboard.click();
+      btnNovoProdutoDash.focus();
+    }
+  });
+
   btnSalvarProduto.addEventListener('click', async () => {
-    if (!produtoAtual()) return;
+    const produto = produtoAtual();
+    if (!produto) return;
     if (!validarFormularioProduto(true)) {
       clearTimeout(salvarTimer);
       salvarTimer = null;
@@ -740,11 +765,18 @@
       mostrarToast('Revise os campos obrigatórios antes de salvar');
       return;
     }
-    if (await salvarRegistro(true)) {
+    btnSalvarProduto.disabled = true;
+    try {
+      const salvo = await salvarRegistro(true);
+      if (!salvo) {
+        mostrarToast('Não foi possível salvar. Tente novamente.');
+        return;
+      }
+      if (produtoAtual() !== produto) return;
       statusSalvamento.textContent = 'Produto salvo';
-      mostrarToast('Produto salvo');
-    } else {
-      mostrarToast('Não foi possível salvar. Tente novamente.');
+      dialogProdutoSalvo.showModal();
+    } finally {
+      btnSalvarProduto.disabled = false;
     }
   });
 
@@ -771,9 +803,7 @@
 
   radiosModo.forEach((r) => r.addEventListener('change', () => {
     produtoAtual().modoPreco = document.querySelector('input[name="modo-preco"]:checked').value;
-    const produto = produtoAtual();
-    blocoMargem.hidden = produto.modoPreco !== 'margem';
-    blocoPreco.hidden = produto.modoPreco !== 'preco';
+    exibirModoPreco(produtoAtual().modoPreco);
     recalcularTudo();
   }));
 

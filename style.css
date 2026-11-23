@@ -24,6 +24,9 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   background-image: radial-gradient(rgba(63,98,123,0.16) 1px, transparent 1.6px);
   background-size: 16px 16px;
@@ -138,7 +141,7 @@ h1, h2 {
 
 /* login */
 .view-login {
-  min-height: calc(100vh - 54px);
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -232,7 +235,7 @@ h1, h2 {
 
 .grade-produtos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -352,8 +355,7 @@ h1, h2 {
 
 /* layout */
 .container-largo {
-  max-width: 1140px;
-  margin: 0 auto;
+  width: 100%;
   padding: 24px clamp(16px, 4vw, 40px) 56px;
 }
 
@@ -411,13 +413,30 @@ h1, h2 {
   color: var(--texto);
 }
 
+.campo-senha {
+  display: flex;
+  gap: 8px;
+}
+
+.campo-senha input {
+  min-width: 0;
+}
+
+.campo-senha button {
+  white-space: nowrap;
+}
+
 .opcional {
   font-weight: 400;
   color: var(--texto-fraco);
 }
 
+.obrigatorio { color: var(--erro); }
+
 input[type="text"],
 input[type="number"],
+input[type="email"],
+input[type="password"],
 textarea,
 select {
   font: inherit;
@@ -431,6 +450,8 @@ select {
 
 input[type="text"]:focus,
 input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
 textarea:focus,
 select:focus {
   border-color: var(--marca);
@@ -455,7 +476,7 @@ textarea { resize: vertical; }
 
 /* tabela de custos */
 .tabela-wrap {
-  overflow-x: auto;
+  container: custos / inline-size;
   border: 1px solid var(--borda);
   border-radius: var(--raio-sm);
   margin-top: 6px;
@@ -465,20 +486,13 @@ textarea { resize: vertical; }
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  --largura-nome-item: 110px;
-  min-width: calc(850px + var(--largura-nome-item));
   font-size: 13.5px;
 }
 
 /* espaco para preencher os campos sem ajuste manual */
-.tabela-custos col:nth-child(1) { width: var(--largura-nome-item); }
-.tabela-custos col:nth-child(2) { width: 160px; }
-.tabela-custos col:nth-child(3) { width: 130px; }
-.tabela-custos col:nth-child(4) { width: 120px; }
-.tabela-custos col:nth-child(5) { width: 140px; }
-.tabela-custos col:nth-child(6) { width: 140px; }
-.tabela-custos col:nth-child(7) { width: 110px; }
-.tabela-custos col:nth-child(8) { width: 50px; }
+.tabela-custos col:nth-child(1) { width: 48px; }
+.tabela-custos col:nth-child(2) { width: 19%; }
+.tabela-custos col:nth-child(8) { width: 12%; }
 
 .tabela-custos .input-qtd,
 .tabela-custos .input-qtd-embalagem,
@@ -498,6 +512,7 @@ textarea { resize: vertical; }
   padding: 9px 10px;
   background: #FAFBFA;
   border-bottom: 1px solid var(--borda);
+  overflow-wrap: anywhere;
 }
 
 .tabela-custos td {
@@ -542,9 +557,8 @@ textarea { resize: vertical; }
 .celula-subtotal {
   font-size: 13.5px;
   font-weight: 600;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   color: var(--texto);
-  min-width: 78px;
 }
 
 .celula-remover { text-align: center; }
@@ -793,30 +807,57 @@ textarea { resize: vertical; }
 
 /* rodape */
 .app-footer {
+  margin-top: auto;
   padding: 16px clamp(16px, 4vw, 40px) 28px;
   text-align: left;
   color: var(--texto-fraco);
   font-size: 12px;
 }
 
+.dialog-produto {
+  width: min(440px, calc(100% - 32px));
+  padding: 24px;
+  color: var(--texto);
+  background: var(--paper);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+}
+
+.dialog-produto::backdrop { background: rgb(26 34 40 / 45%); }
+
+.dialog-produto__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
 /* responsivo */
 @media (max-width: 880px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
   .col-resumo { position: static; order: -1; }
 }
 
-@media (max-width: 520px) {
+@media (max-width: 420px) {
+  .modo-preco { flex-direction: column; }
+  .modo-opcao { justify-content: flex-start; text-align: left; }
+}
+
+@container custos (max-width: 760px) {
   .quantidade-unidade { display: none; }
+  .tabela-custos colgroup,
   .tabela-custos thead { display: none; }
   .tabela-custos, .tabela-custos tbody, .tabela-custos tr, .tabela-custos td, .tabela-custos tfoot {
     display: block;
     width: 100% !important;
     min-width: 0;
   }
-  .tabela-custos { min-width: 0; }
-  .linha-custo {
+  .tabela-custos .linha-custo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
     border-bottom: 2px solid var(--borda);
-    padding: 10px 6px 14px;
+    padding: 8px 10px 12px;
   }
   .tabela-custos td {
     border-bottom: none;
@@ -830,10 +871,19 @@ textarea { resize: vertical; }
     color: var(--texto-suave);
     margin-bottom: 3px;
   }
+  .tabela-custos td[data-obrigatorio]::before {
+    content: attr(data-label) " *";
+  }
+  .tabela-custos .celula-remover {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
   .linha-total {
     display: flex !important;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    overflow-wrap: anywhere;
     padding: 10px 10px;
   }
   .linha-total td {

@@ -24,16 +24,20 @@
     <p class="login-card__sub">Entre com o nome do seu negócio para organizar seus produtos.</p>
 
     <div class="campo">
-      <label for="login-nome">Nome do seu negócio</label>
-      <input type="text" id="login-nome" placeholder="Ex: Doces da Ana" maxlength="60" autocomplete="organization">
+      <label for="login-nome">Nome do seu negócio <span class="obrigatorio" aria-hidden="true">*</span></label>
+      <input type="text" id="login-nome" placeholder="Ex: Doces da Ana" maxlength="60" autocomplete="organization" required>
     </div>
     <div class="campo">
-      <label for="login-email">E-mail</label>
-      <input type="email" id="login-email" maxlength="254" autocomplete="username">
+      <label for="login-email">E-mail <span class="obrigatorio" aria-hidden="true">*</span></label>
+      <input type="email" id="login-email" maxlength="254" autocomplete="username" required>
     </div>
     <div class="campo">
-      <label for="login-senha">Senha</label>
-      <input type="password" id="login-senha" autocomplete="current-password">
+      <label for="login-senha">Senha <span class="obrigatorio" aria-hidden="true">*</span></label>
+      <div class="campo-senha">
+        <input type="password" id="login-senha" autocomplete="current-password" aria-describedby="dica-senha" required>
+        <button type="button" id="btn-mostrar-senha" class="btn btn--ghost" aria-controls="login-senha">Mostrar senha</button>
+      </div>
+      <small id="dica-senha">Use pelo menos 8 caracteres ao criar uma conta.</small>
     </div>
     <p class="erro" id="erro-login" role="alert"></p>
 
@@ -93,8 +97,8 @@
           <section class="card" aria-labelledby="titulo-produto">
             <h2 id="titulo-produto">1. Qual produto você está precificando?</h2>
             <div class="campo">
-              <label for="produto-nome">Nome do produto</label>
-              <input type="text" id="produto-nome" placeholder="Ex: Bolo de Chocolate 1 kg" maxlength="80">
+              <label for="produto-nome">Nome do produto <span class="obrigatorio" aria-hidden="true">*</span></label>
+              <input type="text" id="produto-nome" placeholder="Ex: Bolo de Chocolate 1 kg" maxlength="80" required>
               <p class="erro" id="erro-produto-nome" role="alert"></p>
             </div>
             <div class="campo">
@@ -125,22 +129,21 @@
                 </colgroup>
                 <thead>
                   <tr>
-                    <th scope="col">Item</th>
-                    <th scope="col">Categoria</th>
-                    <th scope="col">Unidade</th>
-                    <th scope="col">Quantidade usada</th>
-                    <th scope="col">Quantidade na embalagem</th>
-                    <th scope="col">Preço da embalagem (R$)</th>
-                    <th scope="col">Subtotal</th>
                     <th scope="col"><span class="sr-only">Remover</span></th>
+                    <th scope="col">Item <span class="obrigatorio" aria-hidden="true">*</span></th>
+                    <th scope="col">Categoria <span class="obrigatorio" aria-hidden="true">*</span></th>
+                    <th scope="col">Unidade <span class="obrigatorio" aria-hidden="true">*</span></th>
+                    <th scope="col">Quantidade usada <span class="obrigatorio" aria-hidden="true">*</span></th>
+                    <th scope="col">Quantidade na embalagem <span class="obrigatorio" aria-hidden="true">*</span></th>
+                    <th scope="col">Preço da embalagem (R$) <span class="obrigatorio" aria-hidden="true">*</span></th>
+                    <th scope="col">Subtotal</th>
                   </tr>
                 </thead>
                 <tbody id="corpo-tabela-custos"></tbody>
                 <tfoot>
                   <tr class="linha-total">
-                    <td colspan="6">Custo total do produto</td>
+                    <td colspan="7">Custo total do produto</td>
                     <td id="custo-total-tabela">R$ 0,00</td>
-                    <td></td>
                   </tr>
                 </tfoot>
               </table>
@@ -152,9 +155,9 @@
 
           <!-- 3. preco -->
           <section class="card" aria-labelledby="titulo-preco">
-            <h2 id="titulo-preco">3. Como você quer definir o preço?</h2>
+            <h2 id="titulo-preco">3. Como você quer definir o preço? <span class="obrigatorio" aria-hidden="true">*</span></h2>
 
-            <div class="modo-preco" role="radiogroup" aria-label="Modo de definição do preço">
+            <div class="modo-preco" role="radiogroup" aria-label="Modo de definição do preço" aria-required="true">
               <label class="modo-opcao">
                 <input type="radio" name="modo-preco" value="margem" id="modo-margem" checked>
                 <span>Quero informar a margem de lucro desejada</span>
@@ -166,13 +169,13 @@
             </div>
 
             <div class="campo" id="bloco-margem">
-              <label for="margem-desejada">Margem de lucro desejada sobre o custo (%)</label>
-              <input type="number" id="margem-desejada" min="0" step="0.1" placeholder="Ex: 40" inputmode="decimal">
+              <label for="margem-desejada">Margem de lucro desejada sobre o custo (%) <span class="obrigatorio" aria-hidden="true">*</span></label>
+              <input type="number" id="margem-desejada" min="0" step="0.1" placeholder="Ex: 40" inputmode="decimal" required>
               <p class="erro" id="erro-margem" role="alert"></p>
             </div>
 
             <div class="campo" id="bloco-preco" hidden>
-              <label for="preco-venda-input">Preço de venda pretendido (R$)</label>
+              <label for="preco-venda-input">Preço de venda pretendido (R$) <span class="obrigatorio" aria-hidden="true">*</span></label>
               <input type="number" id="preco-venda-input" min="0" step="0.01" placeholder="Ex: 45,00" inputmode="decimal">
               <p class="erro" id="erro-preco" role="alert"></p>
             </div>
@@ -246,27 +249,43 @@
 
   </main>
 
-  <footer class="app-footer">
-    <p>Preço Certo · protótipo funcional — Projeto Integrador · UEMG Divinópolis</p>
-  </footer>
 </div>
+
+<footer class="app-footer">
+  <p>Preço Certo · protótipo funcional — Projeto Integrador · UEMG Divinópolis</p>
+</footer>
+
+<dialog id="dialog-produto-salvo" class="dialog-produto" aria-labelledby="titulo-produto-salvo">
+  <h2 id="titulo-produto-salvo">Produto salvo</h2>
+  <form method="dialog" class="dialog-produto__acoes">
+    <button type="submit" value="editar" class="btn btn--ghost" autofocus>Continuar editando</button>
+    <button type="submit" value="produtos" class="btn btn--primario">Voltar aos produtos</button>
+  </form>
+</dialog>
 
 <p class="aviso-toast" id="toast" role="status" aria-live="polite"></p>
 
 <template id="template-linha-custo">
   <tr class="linha-custo">
-    <td data-label="Item">
-      <input type="text" class="input-nome-item" placeholder="Ex: Farinha de trigo" maxlength="60">
+    <td class="celula-remover">
+      <button type="button" class="btn-remover" aria-label="Remover este item">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2.5 4h11M6.5 4V2.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1V4m1.5 0-.5 8.5a1 1 0 0 1-1 .95H6.5a1 1 0 0 1-1-.95L5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </td>
-    <td data-label="Categoria">
-      <select class="input-categoria">
+    <td data-label="Item" data-obrigatorio>
+      <input type="text" class="input-nome-item" placeholder="Ex: Farinha de trigo" maxlength="60" aria-label="Item" required>
+    </td>
+    <td data-label="Categoria" data-obrigatorio>
+      <select class="input-categoria" aria-label="Categoria" required>
         <option value="Matéria-prima">Matéria-prima</option>
         <option value="Embalagem">Embalagem</option>
         <option value="Outros Custos Diretos">Outros Custos Diretos</option>
       </select>
     </td>
-    <td data-label="Unidade">
-      <select class="input-unidade">
+    <td data-label="Unidade" data-obrigatorio>
+      <select class="input-unidade" aria-label="Unidade" required>
         <option value="" disabled selected>Selecione...</option>
         <option value="kg">kg (quilo)</option>
         <option value="g">g (grama)</option>
@@ -282,27 +301,20 @@
         <option value="porcao">porção</option>
         <option value="outro">Outro...</option>
       </select>
-      <input type="text" class="input-unidade-outro" placeholder="Digite a unidade" maxlength="10" hidden>
+      <input type="text" class="input-unidade-outro" placeholder="Outra unidade *" aria-label="Outra unidade" maxlength="10" hidden>
     </td>
-    <td data-label="Quantidade usada">
+    <td data-label="Quantidade usada" data-obrigatorio>
       <span class="quantidade-unidade" aria-hidden="true"></span>
-      <input type="number" class="input-qtd" min="0" step="any" inputmode="decimal" placeholder="Ex: 2" aria-label="Quantidade usada">
+      <input type="number" class="input-qtd" min="0" step="any" inputmode="decimal" placeholder="Ex: 2" aria-label="Quantidade usada" required>
     </td>
-    <td data-label="Quantidade na embalagem">
+    <td data-label="Quantidade na embalagem" data-obrigatorio>
       <span class="embalagem-unidade quantidade-unidade" aria-hidden="true"></span>
-      <input type="number" class="input-qtd-embalagem" min="0" step="any" inputmode="decimal" placeholder="Ex: 1" aria-label="Quantidade na embalagem fechada">
+      <input type="number" class="input-qtd-embalagem" min="0" step="any" inputmode="decimal" placeholder="Ex: 1" aria-label="Quantidade na embalagem fechada" required>
     </td>
-    <td data-label="Preço da embalagem (R$)">
-      <input type="number" class="input-valor" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 10,00" aria-label="Preço pago na embalagem fechada (R$)">
+    <td data-label="Preço da embalagem (R$)" data-obrigatorio>
+      <input type="number" class="input-valor" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 10,00" aria-label="Preço pago na embalagem fechada (R$)" required>
     </td>
     <td data-label="Subtotal" class="celula-subtotal">R$ 0,00</td>
-    <td class="celula-remover">
-      <button type="button" class="btn-remover" aria-label="Remover este item">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M2.5 4h11M6.5 4V2.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1V4m1.5 0-.5 8.5a1 1 0 0 1-1 .95H6.5a1 1 0 0 1-1-.95L5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </td>
   </tr>
 </template>
 
