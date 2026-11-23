@@ -1,8 +1,6 @@
 (() => {
   'use strict';
 
-  const CHAVE_SESSAO = 'preco-certo:sessao';
-  const PREFIXO_USUARIO = 'preco-certo:usuario:';
   const MARGEM_BAIXA_LIMITE = 15; // %
 
   const formatarMoeda = (valor) =>
@@ -21,9 +19,9 @@
   const viewLogin = buscarElemento('#view-login');
   const viewApp = buscarElemento('#view-app');
   const loginNome = buscarElemento('#login-nome');
+  const loginEmail = buscarElemento('#login-email');
   const loginSenha = buscarElemento('#login-senha');
   const btnEntrar = buscarElemento('#btn-entrar');
-  const btnEsqueciCodigo = buscarElemento('#btn-esqueci-codigo');
   const erroLogin = buscarElemento('#erro-login');
   const btnSair = buscarElemento('#btn-sair');
   const usuarioLogadoNome = buscarElemento('#usuario-logado-nome');
@@ -70,27 +68,62 @@
   const resumoAlertas = buscarElemento('#resumo-alertas');
 
   // estado em memoria
-  let chaveUsuarioAtual = null;
-  let registro = null;       // { nomeexibicao, senha, produtos: [...] }
-  let produtoAtualId = null; // id do produto em edicao
-
-  // persistencia
-  function normalizarChave(nome) {
-    return nome.trim().toLowerCase();
-  }
-
-  function carregarRegistro(chave) {
-    try {
-      const bruto = localStorage.getItem(PREFIXO_USUARIO + chave);
-      return bruto ? JSON.parse(bruto) : null;
-    } catch (e) {
-      return null;
-    }
-  }
-
+  let registro = null;
+  let produtoAtualId = null;
   let salvarTimer = null;
+  let filaSalvamento = Promise.resolve(true);
+  let produtosSalvos = [];
+  let sessaoVercel = null;
+
+  async function apiNegocio(dados, renovar = true) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (sessaoVercel && dados.acao !== 'entrar' && dados.acao !== 'renovar') {
+      headers.Authorization = 'Bearer ' + sessaoVercel.acesso;
+    }
+    const resposta = await fetch('/api/negocio', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(dados),
+    });
+    const resultado = await resposta.json();
+    if (resposta.status === 401 && headers.Authorization && renovar) {
+      sessaoVercel = await apiNegocio({ acao: 'renovar', renovacao: sessaoVercel.renovacao });
+      return apiNegocio(dados, false);
+    }
+    if (!resposta.ok) throw new Error(resultado.erro);
+    return resultado;
+  }
+
+  function salvarOnline() {
+    const cadastro = registro;
+    const snapshot = structuredClone(cadastro.produtos);
+    filaSalvamento = filaSalvamento.then(async () => {
+      try {
+        const produtos = snapshot.flatMap((produto) => {
+          if (produtoCompleto(produto)) return [produto];
+          const anterior = produtosSalvos.find((p) => p.id === produto.id);
+          return anterior ? [anterior] : [];
+        });
+        const resultado = await apiNegocio({
+          acao: 'salvar', nome: cadastro.nomeExibicao, produtos, versao: cadastro.versao,
+        });
+        cadastro.versao = resultado.versao;
+        produtosSalvos = produtos;
+        statusSalvamento.textContent = 'Alterações salvas';
+        statusSalvamento.classList.remove('status-salvamento--erro');
+        return true;
+      } catch (e) {
+        statusSalvamento.textContent = e.message;
+        statusSalvamento.classList.add('status-salvamento--erro');
+        mostrarToast(e.message);
+        return false;
+      }
+    });
+    return filaSalvamento;
+  }
+
   function salvarRegistro(imediato = false) {
-    if (!chaveUsuarioAtual || !registro) return false;
+    if (!registro) return false;
     clearTimeout(salvarTimer);
     salvarTimer = null;
     if (produtoAtualId && !validarFormularioProduto()) {
@@ -104,24 +137,8 @@
     function gravar() {
       salvarTimer = null;
       if (produtoAtualId && !validarFormularioProduto()) return false;
-      try {
-        const anteriores = carregarRegistro(chaveUsuarioAtual)?.produtos || [];
-        const produtos = registro.produtos.flatMap((produto) => {
-          if (produtoCompleto(produto)) return [produto];
-          const anterior = anteriores.find((p) => p.id === produto.id);
-          return anterior ? [anterior] : [];
-        });
-        localStorage.setItem(PREFIXO_USUARIO + chaveUsuarioAtual, JSON.stringify({ ...registro, produtos }));
-        statusSalvamento.textContent = 'Alterações salvas';
-        return true;
-      } catch (e) {
-        statusSalvamento.textContent = 'Não foi possível salvar. Tente novamente.';
-        statusSalvamento.classList.add('status-salvamento--erro');
-        console.warn('Não foi possível salvar:', e);
-        return false;
-      }
+      return salvarOnline();
     }
-
     if (imediato) return gravar();
     salvarTimer = setTimeout(gravar, 250);
   }
@@ -180,7 +197,8 @@
   }
 
   // login
-  function tentarEntrar() {
+  async function tentarEntrar() {
+    if (btnEntrar.disabled) return;
     const nome = loginNome.value;
     const senha = loginSenha.value;
 
@@ -190,73 +208,34 @@
       return;
     }
 
-    const chave = normalizarChave(nome);
-    let dados = carregarRegistro(chave);
-
-    if (dados) {
-      if (dados.senha && dados.senha !== senha) {
-        erroLogin.textContent = 'Código de acesso incorreto para esse nome.';
-        loginSenha.focus();
-        return;
-      }
-    } else {
-      dados = { nomeExibicao: nome.trim(), senha: senha || '', produtos: [] };
-      localStorage.setItem(PREFIXO_USUARIO + chave, JSON.stringify(dados));
+    if (!loginEmail.value || !loginEmail.validity.valid || !senha) {
+      erroLogin.textContent = 'Informe seu e-mail e sua senha.';
+      return;
     }
 
+    btnEntrar.disabled = true;
     erroLogin.textContent = '';
-    localStorage.setItem(CHAVE_SESSAO, chave);
-    abrirApp(chave, dados);
-  }
-
-  function redefinirCodigo() {
-    const nome = loginNome.value.trim();
-    erroLogin.textContent = '';
-    if (!nome) {
-      erroLogin.textContent = 'Informe o nome do seu negócio para redefinir o código.';
-      loginNome.focus();
-      return;
-    }
-
-    const chave = normalizarChave(nome);
-    const dados = carregarRegistro(chave);
-    if (!dados) {
-      erroLogin.textContent = 'Nenhum cadastro encontrado com esse nome neste navegador.';
-      loginNome.focus();
-      return;
-    }
-
-    if (!window.confirm(`Redefinir o código de "${dados.nomeExibicao}" neste navegador? Seus produtos serão mantidos. Como este é um cadastro local, qualquer pessoa com acesso a este navegador pode redefinir o código.`)) return;
-    const novoCodigo = window.prompt('Digite o novo código de acesso. Deixe vazio para entrar sem código.');
-    if (novoCodigo === null) return;
-    const confirmacao = window.prompt('Digite novamente o novo código para confirmar.');
-    if (confirmacao === null) return;
-    if (novoCodigo !== confirmacao) {
-      erroLogin.textContent = 'Os códigos não coincidem. Clique em "Esqueci meu código" para tentar novamente.';
-      btnEsqueciCodigo.focus();
-      return;
-    }
-
     try {
-      localStorage.setItem(PREFIXO_USUARIO + chave, JSON.stringify({ ...dados, senha: novoCodigo }));
+      sessaoVercel = await apiNegocio({ acao: 'entrar', email: loginEmail.value.trim(), senha });
+      loginSenha.value = '';
+      abrirApp(await apiNegocio({ acao: 'abrir', nome }));
     } catch (e) {
-      erroLogin.textContent = 'Não foi possível redefinir o código. Tente novamente.';
-      return;
+      sessaoVercel = null;
+      erroLogin.textContent = e.message;
+    } finally {
+      btnEntrar.disabled = false;
     }
-    loginSenha.value = '';
-    loginSenha.focus();
-    mostrarToast('Código redefinido. Informe o novo código e clique em Entrar.');
   }
-
-  function sair() {
-    if (salvarTimer !== null && !salvarRegistro(true)) {
+  async function sair() {
+    if (salvarTimer !== null && !await salvarRegistro(true)) {
       mostrarToast('Não foi possível salvar. Tente salvar antes de sair.');
       return;
     }
-    localStorage.removeItem(CHAVE_SESSAO);
-    chaveUsuarioAtual = null;
+    await filaSalvamento;
+    sessaoVercel = null;
     registro = null;
     loginNome.value = '';
+    loginEmail.value = '';
     loginSenha.value = '';
     erroLogin.textContent = '';
     viewApp.hidden = true;
@@ -264,13 +243,13 @@
     loginNome.focus();
   }
 
-  function abrirApp(chave, dados) {
-    chaveUsuarioAtual = chave;
+  function abrirApp(dados) {
     registro = dados;
     // Uma embalagem de referência com quantidade 1 preserva o custo antigo por unidade.
     registro.produtos.forEach((produto) => produto.itens.forEach((item) => {
       if (item.qtdEmbalagem === undefined) item.qtdEmbalagem = 1;
     }));
+    produtosSalvos = structuredClone(registro.produtos);
     usuarioLogadoNome.textContent = dados.nomeExibicao;
     viewLogin.hidden = true;
     viewApp.hidden = false;
@@ -278,8 +257,8 @@
   }
 
   btnEntrar.addEventListener('click', tentarEntrar);
-  btnEsqueciCodigo.addEventListener('click', redefinirCodigo);
   loginSenha.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
+  loginEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   loginNome.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   btnSair.addEventListener('click', sair);
 
@@ -367,7 +346,10 @@
     abrirProduto(produto.id);
   });
 
-  btnVoltarDashboard.addEventListener('click', mostrarDashboard);
+  btnVoltarDashboard.addEventListener('click', () => {
+    if (salvarTimer !== null) salvarRegistro(true);
+    mostrarDashboard();
+  });
 
   // edicao de produto
   function produtoAtual() {
@@ -710,7 +692,7 @@
   }
 
   // eventos do formulario
-  btnSalvarProduto.addEventListener('click', () => {
+  btnSalvarProduto.addEventListener('click', async () => {
     if (!produtoAtual()) return;
     if (!validarFormularioProduto(true)) {
       clearTimeout(salvarTimer);
@@ -720,7 +702,7 @@
       mostrarToast('Revise os campos obrigatórios antes de salvar');
       return;
     }
-    if (salvarRegistro(true)) {
+    if (await salvarRegistro(true)) {
       statusSalvamento.textContent = 'Produto salvo';
       mostrarToast('Produto salvo');
     } else {
@@ -785,27 +767,23 @@
     recalcularTudo();
   });
 
-  btnExcluirProduto.addEventListener('click', () => {
+  btnExcluirProduto.addEventListener('click', async () => {
     const produto = produtoAtual();
     const nome = produto.nome.trim() || 'este produto';
     if (!window.confirm(`Excluir "${nome}"? Essa ação não pode ser desfeita.`)) return;
-    registro.produtos = registro.produtos.filter((p) => p.id !== produto.id);
-    salvarRegistro();
+    clearTimeout(salvarTimer);
+    salvarTimer = null;
+    const cadastro = registro;
+    const indice = cadastro.produtos.indexOf(produto);
+    cadastro.produtos.splice(indice, 1);
     mostrarDashboard();
+    if (!await salvarRegistro(true)) {
+      cadastro.produtos.splice(indice, 0, produto);
+      if (registro === cadastro && !viewDashboard.hidden) renderDashboard();
+      return;
+    }
     mostrarToast(`"${nome}" excluído.`);
   });
 
-  // inicializacao
-  function iniciar() {
-    const chaveSalva = localStorage.getItem(CHAVE_SESSAO);
-    if (chaveSalva) {
-      const dados = carregarRegistro(chaveSalva);
-      if (dados) { abrirApp(chaveSalva, dados); return; }
-    }
-    viewLogin.hidden = false;
-    viewApp.hidden = true;
-    loginNome.focus();
-  }
-
-  iniciar();
+  loginNome.focus();
 })();

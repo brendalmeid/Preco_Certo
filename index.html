@@ -25,19 +25,22 @@
 
     <div class="campo">
       <label for="login-nome">Nome do seu negócio</label>
-      <input type="text" id="login-nome" placeholder="Ex: Doces da Ana" maxlength="60" autocomplete="username">
+      <input type="text" id="login-nome" placeholder="Ex: Doces da Ana" maxlength="60" autocomplete="organization">
     </div>
     <div class="campo">
-      <label for="login-senha">Código de acesso <span class="opcional">(opcional)</span></label>
-      <input type="password" id="login-senha" placeholder="Só para separar seus dados neste navegador" autocomplete="current-password">
+      <label for="login-email">E-mail</label>
+      <input type="email" id="login-email" maxlength="254" autocomplete="username">
+    </div>
+    <div class="campo">
+      <label for="login-senha">Senha</label>
+      <input type="password" id="login-senha" autocomplete="current-password">
     </div>
     <p class="erro" id="erro-login" role="alert"></p>
 
     <button type="button" id="btn-entrar" class="btn btn--primario btn--bloco">Entrar</button>
-    <button type="button" id="btn-esqueci-codigo" class="btn btn--ghost btn--bloco">Esqueci meu código</button>
 
     <p class="login-aviso">
-      Este é um login local simulado: tudo fica salvo apenas neste navegador, sem servidor nem internet. Não use senhas que você usa em outros lugares.
+      Use a mesma conta e o mesmo nome do negócio para acessar seus produtos em outro dispositivo.
     </p>
   </div>
 </main>

@@ -5,37 +5,28 @@ Feito com HTML, CSS e JavaScript, sem frameworks.
 
 ## Como usar
 
-Abra `index.html` no navegador e informe o nome do seu negócio.
-Depois, clique em "Novo produto" e preencha os itens de custo.
+Entre com seu e-mail e senha e com o nome do negócio. Clique em **Novo produto**
+e preencha os itens de custo, o preço e o estoque.
 
-Se esquecer o código, informe o nome do negócio e clique em "Esqueci meu código".
-Confirme a redefinição e digite o novo código duas vezes; deixe vazio para entrar
-sem código. Os produtos são mantidos. Essa recuperação funciona apenas neste
-navegador e não verifica identidade, pois o cadastro é uma simulação local.
+## Como os produtos são salvos
 
-As alterações são salvas automaticamente, com um aviso abaixo do botão.
-Você também pode clicar em "Salvar produto" para salvar na hora e ver a confirmação.
+Ao editar um produto com os campos obrigatórios preenchidos, o site envia as
+alterações para a API da Vercel. O botão **Salvar produto** envia na hora. A API
+grava os dados no PostgreSQL do Supabase, vinculados à conta e ao nome do negócio.
+Use a mesma conta e o mesmo nome para abrir o cadastro em outro dispositivo.
 
-Na parte 2, informe nome, categoria, unidade, quantidade usada, quantidade na embalagem fechada e preço pago pela embalagem. Use a mesma unidade nas duas quantidades (kg com kg ou g com g).
+## Publicação na Vercel
 
-## Arquivos
+1. Importe o repositório com o preset **Other** e o diretório raiz `./`.
+2. Conecte um projeto [Supabase](https://vercel.com/marketplace/supabase) à Vercel.
+3. No SQL Editor do Supabase, execute
+   [a migração do banco](supabase/migrations/20261123000000_negocios.sql).
+   Em **Authentication → Users**, crie o usuário que vai acessar o site.
+4. Confira as variáveis `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` na Vercel.
+   A integração também pode adicioná-las com o prefixo `NEXT_PUBLIC_`.
+5. Faça o deploy. O `vercel.json` define o build e a pasta de saída.
 
-- `index.html`: telas de entrada, lista de produtos e formulário.
-- `style.css`: cores, tamanhos e organização da página.
-- `script.js`: cadastro, cálculos, estoque e salvamento dos dados.
-- `assets/logo-uemg.png`: logo da universidade.
-
-## O que dá para fazer
-
-- Cadastrar e editar vários produtos.
-- Calcular o custo dos materiais a partir da quantidade usada e dos dados da embalagem fechada.
-- Calcular o preço usando um percentual sobre o custo ou digitar um preço.
-- Acompanhar o estoque e definir uma quantidade mínima.
-- Ver avisos de prejuízo, margem abaixo de 15% e estoque baixo.
-
-Os dados ficam no `localStorage` do navegador. O nome do negócio e o
-código de acesso opcional servem para separar os cadastros. Esse login é
-uma simulação local e não oferece autenticação segura.
+Os dados de versões anteriores só aparecem no Supabase após uma migração.
 
 ## Cálculos
 
