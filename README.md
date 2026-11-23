@@ -7,6 +7,8 @@ Feito com HTML, CSS e JavaScript, sem frameworks.
 
 Entre com seu e-mail e senha e com o nome do negócio. Clique em **Novo produto**
 e preencha os itens de custo, o preço e o estoque.
+Se for seu primeiro acesso, preencha e-mail e senha e clique em **Criar conta**.
+Se receber um e-mail de confirmação, abra o link antes de entrar.
 
 ## Como os produtos são salvos
 
@@ -21,7 +23,9 @@ Use a mesma conta e o mesmo nome para abrir o cadastro em outro dispositivo.
 2. Conecte um projeto [Supabase](https://vercel.com/marketplace/supabase) à Vercel.
 3. No SQL Editor do Supabase, execute
    [a migração do banco](supabase/migrations/20261123000000_negocios.sql).
-   Em **Authentication → Users**, crie o usuário que vai acessar o site.
+   Para ativar **Criar conta**, permita novos cadastros em **Authentication**
+   e informe a URL do site em **URL Configuration → Site URL**. Para enviar
+   confirmações a usuários externos, configure um servidor SMTP no Supabase.
 4. Confira as variáveis `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` na Vercel.
    A integração também pode adicioná-las com o prefixo `NEXT_PUBLIC_`.
 5. Faça o deploy. O `vercel.json` define o build e a pasta de saída.

@@ -22,6 +22,35 @@ async function handle(request) {
   if (!url || !key) return json({ erro: 'A conexão com o banco ainda precisa ser configurada.' }, 503);
   const headers = { apikey: key, 'Content-Type': 'application/json' };
 
+  if (body?.acao === 'criar-conta') {
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const senha = body.senha;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 ||
+        typeof senha !== 'string' || senha.length < 8) {
+      return json({ erro: 'Informe um e-mail válido e uma senha com pelo menos 8 caracteres.' }, 400);
+    }
+    const response = await fetch(new URL('/auth/v1/signup', url), {
+      method: 'POST', headers, body: JSON.stringify({ email, password: senha }),
+    });
+    if (response.status === 429) return json({ erro: 'Muitas tentativas. Aguarde e tente novamente.' }, 429);
+    const result = await response.json();
+    const codigo = result.error_code ?? result.code;
+    if (codigo === 'signup_disabled') {
+      return json({ erro: 'A criação de contas está desativada no momento.' }, 403);
+    }
+    if (codigo === 'weak_password') {
+      return json({ erro: 'Escolha uma senha mais forte.' }, 400);
+    }
+    if (!response.ok && !['user_already_exists', 'email_exists'].includes(codigo)) {
+      return json({ erro: 'Não foi possível criar a conta. Tente novamente mais tarde.' }, 502);
+    }
+    return json({
+      mensagem: result.access_token
+        ? 'Conta criada. Informe sua senha e clique em Entrar.'
+        : 'Confira seu e-mail para confirmar a conta. Se já tiver cadastro, clique em Entrar.',
+    });
+  }
+
   if (body?.acao === 'entrar' || body?.acao === 'renovar') {
     const login = body.acao === 'entrar';
     const credentials = login ? { email: body.email, password: body.senha } : { refresh_token: body.renovacao };

@@ -22,6 +22,8 @@
   const loginEmail = buscarElemento('#login-email');
   const loginSenha = buscarElemento('#login-senha');
   const btnEntrar = buscarElemento('#btn-entrar');
+  const btnCriarConta = buscarElemento('#btn-criar-conta');
+  const statusCadastro = buscarElemento('#status-cadastro');
   const erroLogin = buscarElemento('#erro-login');
   const btnSair = buscarElemento('#btn-sair');
   const usuarioLogadoNome = buscarElemento('#usuario-logado-nome');
@@ -77,7 +79,7 @@
 
   async function apiNegocio(dados, renovar = true) {
     const headers = { 'Content-Type': 'application/json' };
-    if (sessaoVercel && dados.acao !== 'entrar' && dados.acao !== 'renovar') {
+    if (sessaoVercel && ['abrir', 'salvar'].includes(dados.acao)) {
       headers.Authorization = 'Bearer ' + sessaoVercel.acesso;
     }
     const resposta = await fetch('/api/negocio', {
@@ -214,7 +216,9 @@
     }
 
     btnEntrar.disabled = true;
+    btnCriarConta.disabled = true;
     erroLogin.textContent = '';
+    statusCadastro.hidden = true;
     try {
       sessaoVercel = await apiNegocio({ acao: 'entrar', email: loginEmail.value.trim(), senha });
       loginSenha.value = '';
@@ -224,8 +228,41 @@
       erroLogin.textContent = e.message;
     } finally {
       btnEntrar.disabled = false;
+      btnCriarConta.disabled = false;
     }
   }
+
+  async function criarConta() {
+    erroLogin.textContent = '';
+    statusCadastro.hidden = true;
+    if (!loginEmail.value || !loginEmail.validity.valid) {
+      erroLogin.textContent = 'Informe um e-mail válido.';
+      loginEmail.focus();
+      return;
+    }
+    if (loginSenha.value.length < 8) {
+      erroLogin.textContent = 'Para criar uma conta, use uma senha com pelo menos 8 caracteres.';
+      loginSenha.focus();
+      return;
+    }
+
+    btnEntrar.disabled = true;
+    btnCriarConta.disabled = true;
+    try {
+      const resultado = await apiNegocio({
+        acao: 'criar-conta', email: loginEmail.value.trim(), senha: loginSenha.value,
+      });
+      statusCadastro.textContent = resultado.mensagem;
+      statusCadastro.hidden = false;
+      loginSenha.value = '';
+    } catch (e) {
+      erroLogin.textContent = e.message;
+    } finally {
+      btnEntrar.disabled = false;
+      btnCriarConta.disabled = false;
+    }
+  }
+
   async function sair() {
     if (salvarTimer !== null && !await salvarRegistro(true)) {
       mostrarToast('Não foi possível salvar. Tente salvar antes de sair.');
@@ -257,6 +294,7 @@
   }
 
   btnEntrar.addEventListener('click', tentarEntrar);
+  btnCriarConta.addEventListener('click', criarConta);
   loginSenha.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   loginEmail.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
   loginNome.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
